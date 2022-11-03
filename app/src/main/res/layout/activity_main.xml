@@ -7,13 +7,41 @@
     tools:context=".MainActivity">
 
     <TextView
+        android:id="@+id/txtDeviceIsConnected"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Hello World!"
-        android:id="@+id/viewImei"
+        android:drawableStart="@drawable/ic_baseline_usb_on"
+        android:text="@string/wait_device"
+        android:textSize="30dp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.462"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent" />
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintVertical_bias="0.057" />
+
+    <Button
+        android:id="@+id/btnCheckDevice"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="verify"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.498"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/txtDeviceIsConnected"
+        app:layout_constraintVertical_bias="0.395" />
+
+    <TextView
+        android:id="@+id/txtDeviceName"
+        android:layout_width="221dp"
+        android:layout_height="19dp"
+        app:layout_constraintBottom_toTopOf="@+id/btnCheckDevice"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintHorizontal_bias="0.173"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/txtDeviceIsConnected"
+        app:layout_constraintVertical_bias="0.122" />
+
 
 </androidx.constraintlayout.widget.ConstraintLayout>
