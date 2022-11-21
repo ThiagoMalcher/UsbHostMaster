@@ -1,50 +1,85 @@
 package com.malcher.usbhostmaster.utils;
 
+import static androidx.constraintlayout.helper.widget.MotionEffect.TAG;
+import static androidx.core.app.ActivityCompat.startActivityForResult;
+import static androidx.core.content.ContextCompat.startActivity;
+import static com.google.android.material.internal.ContextUtils.getActivity;
+
+import android.app.Notification;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.hardware.usb.UsbConstants;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbEndpoint;
+import android.hardware.usb.UsbInterface;
 import android.hardware.usb.UsbManager;
+import android.mtp.MtpDevice;
+import android.net.Uri;
+import android.os.Environment;
+import android.os.Message;
+import android.os.storage.StorageManager;
+import android.os.storage.StorageVolume;
+import android.provider.MediaStore;
+import android.provider.SyncStateContract;
+import android.util.Log;
 import android.widget.Toast;
 
+import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 
 public class UsbManagerUtilities {
 
-    static final String ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION";
+    public static final String ACTION_USB_PERMISSION = "com.android.example.USB_PERMISSION";
     private static String usbDeviceList = null;
     private static String realDeviceName = null;
-    private UsbDeviceConnection usbDeviceConnection;
+    private static UsbDeviceConnection mUsbDeviceConnection;
     private byte[] readBytes = new byte[64];
-    PendingIntent permissionIntent;
+    private static UsbManager mUsbManager;
+    private static UsbDevice mUsbDevice;
+    private static  StorageManager mStorageManager;
+    private static Context mContext;
+    private static PendingIntent permissionIntent;
+    private static UsbInterface intf = null;
+    private static UsbEndpoint input, output;
 
+    public static void UsbManagerUtilities(Context context) {
+        mContext = context;
+        try {
+            mUsbManager = (UsbManager) mContext.getSystemService(Context.USB_SERVICE);
+            mUsbDevice = mUsbManager.getDeviceList().values().iterator().next();
+            mStorageManager = (StorageManager) mContext.getSystemService(Context.STORAGE_SERVICE);
 
-    public static boolean checkIfExistDeviceConnected(Context context, UsbManager usbManager) {
+        }catch (Exception e) { }
+    }
+
+    public static boolean checkIfExistDeviceConnected() {
 
         try {
-            HashMap<String, UsbDevice> deviceList = usbManager.getDeviceList();
+            HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
             if(deviceList.size() == 0) {
-                Toast.makeText(context, "Device not Connected, check cable or device and try again...", Toast.LENGTH_SHORT).show();
+                Toast.makeText(mContext, "Device not Connected, check cable or device and try again...", Toast.LENGTH_SHORT).show();
                 return false;
             }
 
             return true;
         }catch (Exception e) {
-            Toast.makeText(context, "ERROR: not possible get UsbDevice", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mContext, "ERROR: not possible get UsbDevice", Toast.LENGTH_SHORT).show();
         }
 
         return false;
     }
 
-    public static String getDeviceName(UsbManager usbManager) {
+    public static String getDeviceName() {
 
         UsbDevice usbDevice;
-        HashMap<String, UsbDevice> deviceList = usbManager.getDeviceList();
+        HashMap<String, UsbDevice> deviceList = mUsbManager.getDeviceList();
         Iterator<UsbDevice> deviceIterator = deviceList.values().iterator();
 
         while(deviceIterator.hasNext()) {
@@ -58,16 +93,21 @@ public class UsbManagerUtilities {
         return realDeviceName;
     }
 
-    public void usbConnection(Context context, UsbManager usbManager) {
-        if(checkIfExistDeviceConnected(context, usbManager)) {
-
+    public static void deviceConnect() {
+        for(String k : mUsbManager.getDeviceList().keySet()){
+            UsbDevice device = mUsbManager.getDeviceList().get(k);
+            if(mUsbManager.hasPermission(device)){
+                mUsbDeviceConnection = mUsbManager.openDevice(device);
+                if(mUsbDeviceConnection == null){
+                    Toast.makeText(mContext, "ERROR: not possible connect UsbDevice", Toast.LENGTH_SHORT).show();
+                }
+                else{
+                    Toast.makeText(mContext, "Device connected with success, preparing to send file", Toast.LENGTH_SHORT).show();
+                }
+            }
         }
-    }
 
-    public static void checkPermission(Context context) {
-        PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), 0);
-        IntentFilter intentFilter = new IntentFilter(ACTION_USB_PERMISSION);
-       // context.registerReceiver(usbReceiver, intentFilter);
+
     }
 
 }
