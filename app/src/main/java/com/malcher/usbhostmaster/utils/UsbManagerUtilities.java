@@ -28,6 +28,12 @@ import android.provider.SyncStateContract;
 import android.util.Log;
 import android.widget.Toast;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -47,7 +53,7 @@ public class UsbManagerUtilities {
     private static Context mContext;
     private static PendingIntent permissionIntent;
     private static UsbInterface intf = null;
-    private static UsbEndpoint input, output;
+    private static UsbEndpoint mEndpointOut, mEndpointIn;
 
     public static void UsbManagerUtilities(Context context) {
         mContext = context;
@@ -94,10 +100,11 @@ public class UsbManagerUtilities {
     }
 
     public static void deviceConnect() {
-        for(String k : mUsbManager.getDeviceList().keySet()){
-            UsbDevice device = mUsbManager.getDeviceList().get(k);
-            if(mUsbManager.hasPermission(device)){
-                mUsbDeviceConnection = mUsbManager.openDevice(device);
+        String getFilePath = getFilePath();
+        for(String k : mUsbManager.getDeviceList().keySet()) {
+            mUsbDevice = mUsbManager.getDeviceList().get(k);
+            if(mUsbManager.hasPermission(mUsbDevice)){
+                mUsbDeviceConnection = mUsbManager.openDevice(mUsbDevice);
                 if(mUsbDeviceConnection == null){
                     Toast.makeText(mContext, "ERROR: not possible connect UsbDevice", Toast.LENGTH_SHORT).show();
                 }
@@ -107,7 +114,76 @@ public class UsbManagerUtilities {
             }
         }
 
+        intf = findAdbInterface(mUsbDevice);
+        UsbEndpoint epOut = null;
+        UsbEndpoint epIn = null;
+        // look for our bulk endpoints
+        for (int i = 0; i < intf.getEndpointCount(); i++) {
+            UsbEndpoint ep = intf.getEndpoint(i);
+            if (ep.getType() == UsbConstants.USB_ENDPOINT_XFER_BULK) {
+                if (ep.getDirection() == UsbConstants.USB_DIR_OUT) {
+                    epOut = ep;
+                } else {
+                    epIn = ep;
+                }
+            }
+        }
+        if (epOut == null || epIn == null) {
+            throw new IllegalArgumentException("not all endpoints found");
+        }
 
+        mEndpointOut = epOut;
+        mEndpointIn = epIn;
+
+        int offset = 0;
+        int transferred = 0;
+
+        try{
+            File file = new File(getFilePath());
+            FileInputStream fileInputStream = new FileInputStream(new File(getFilePath));
+            BufferedReader buffer = new BufferedReader(new InputStreamReader(
+                    fileInputStream),8*1024);
+            int size = (int) file.length();
+            byte[] tmp = new byte[size];
+            System.arraycopy(buffer, 0, tmp, 0, size);
+
+            while ((transferred = mUsbDeviceConnection.bulkTransfer(mEndpointOut, tmp, size - offset, 1000)) >= 0) {
+                offset += transferred;
+                if (offset >= size) {
+                    break;
+                } else {
+                    System.arraycopy(buffer, offset, tmp, 0, size - offset);
+                }
+            }
+            if (transferred < 0) {
+                throw new IOException("bulk transfer fail");
+            }
+
+        }catch (Exception e){}
+    }
+
+    public static String getFilePath() {
+        String filePath = Environment.DIRECTORY_DOCUMENTS.toString() + "fw.zip";
+        File file =  new File(filePath);
+        if(file.exists()){
+            return filePath;
+        }
+
+        return null;
+    }
+
+
+    // searches for an adb interface on the given USB device
+    private static UsbInterface findAdbInterface(UsbDevice device) {
+        int count = device.getInterfaceCount();
+        for (int i = 0; i < count; i++) {
+            UsbInterface intf = device.getInterface(i);
+            if (intf.getInterfaceClass() == 255 && intf.getInterfaceSubclass() == 66 &&
+                    intf.getInterfaceProtocol() == 1) {
+                return intf;
+            }
+        }
+        return null;
     }
 
 }
